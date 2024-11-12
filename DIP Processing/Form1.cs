@@ -1,8 +1,9 @@
 using System;
 using System.Drawing;
 using System.Drawing.Imaging;
+using ImageProcess2;
 using OpenCvSharp;
-using OpenCvSharp.Extensions; 
+using OpenCvSharp.Extensions; // Add this namespace at the top of your file
 
 
 namespace DIP_Processing
@@ -14,6 +15,7 @@ namespace DIP_Processing
         Mat frame;
         private Thread camera;
         bool isCameraRunning = false;
+
 
 
         private void CaptureCamera()
@@ -28,21 +30,21 @@ namespace DIP_Processing
             frame = new Mat();
             capture = new VideoCapture(0);
 
-            
+            // Check if the camera opened successfully
             if (!capture.IsOpened())
             {
                 Console.WriteLine("Camera could not be opened.");
-                return; 
+                return; // Exit if the camera cannot be opened
             }
 
             while (isCameraRunning)
             {
-               
+                // Read frame only if camera is running
                 if (capture.Read(frame))
                 {
                     loaded = BitmapConverter.ToBitmap(frame);
 
-                    
+                    // Dispose of previous image to prevent memory leaks
                     if (pictureBox1.Image != null)
                     {
                         pictureBox1.Image.Dispose();
@@ -54,7 +56,7 @@ namespace DIP_Processing
                     Console.WriteLine("Failed to read from the camera.");
                 }
             }
-            openCamera.Text = "Open Camera";
+
         }
 
         public Form1()
@@ -87,16 +89,16 @@ namespace DIP_Processing
             {
                 saveFileDialog.Filter = "PNG Image|*.png|JPEG Image|*.jpg|Bitmap Image|*.bmp|GIF Image|*.gif";
                 saveFileDialog.Title = "Save an Image File";
-                saveFileDialog.FileName = "image";
+                saveFileDialog.FileName = "image"; // Default file name
 
-                
+                // Show the dialog and check if the user clicked the Save button
                 if (saveFileDialog.ShowDialog() == DialogResult.OK)
                 {
-                    
+                    // Save the bitmap to the selected file
                     string filePath = saveFileDialog.FileName;
                     try
                     {
-                        bitmap.Save(filePath);
+                        bitmap.Save(filePath); // Save as default format (PNG)
                     }
                     catch (Exception ex)
                     {
@@ -114,7 +116,7 @@ namespace DIP_Processing
             }
             Bitmap b = (Bitmap)loaded.Clone();
 
-            
+            // GDI+ still lies to us - the return format is BGR, NOT RGB.
             BitmapData bmData = b.LockBits(new Rectangle(0, 0, b.Width, b.Height), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb);
 
             int stride = bmData.Stride;
@@ -151,7 +153,7 @@ namespace DIP_Processing
 
         }
 
-        
+        //Basic
         private void basicCopy_Click(object sender, EventArgs e)
         {
             if (loaded == null)
@@ -180,7 +182,7 @@ namespace DIP_Processing
 
         private void colorInversion_Click(object sender, EventArgs e)
         {
-            
+            // GDI+ still lies to us - the return format is BGR, NOT RGB.
             if (loaded == null)
             {
                 return;
@@ -234,18 +236,19 @@ namespace DIP_Processing
                 }
             }
 
-            
-            int[] histdata = new int[256]; 
+            //histogram 1d data;
+            int[] histdata = new int[256]; // array from 0 to 255
             for (int x = 0; x < a.Width; x++)
             {
                 for (int y = 0; y < a.Height; y++)
                 {
                     sample = a.GetPixel(x, y);
-                    histdata[sample.R]++; 
+                    histdata[sample.R]++; // can be any color property r,g or b
                 }
             }
 
-            
+            // Bitmap Graph Generation
+            // Setting empty Bitmap with background color
             Bitmap b = new Bitmap(256, 800);
             for (int x = 0; x < 256; x++)
             {
@@ -254,7 +257,7 @@ namespace DIP_Processing
                     b.SetPixel(x, y, Color.White);
                 }
             }
-           
+            // plotting points based from histdata
             for (int x = 0; x < 256; x++)
             {
                 for (int y = 0; y < Math.Min(histdata[x] / 5, b.Height - 1); y++)
@@ -272,33 +275,34 @@ namespace DIP_Processing
         private void sepia_Click(object sender, EventArgs e)
         {
 
-            Bitmap bmp = (Bitmap) loaded.Clone();
-            
+            Bitmap bmp = (Bitmap)loaded.Clone();
+            //get image dimension
             int width = bmp.Width;
             int height = bmp.Height;
 
-            
+            //color of pixel
             Color p;
 
-            
+            //sepia
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
-                    
+                    //get pixel value
                     p = bmp.GetPixel(x, y);
 
+                    //extract pixel component ARGB
                     int a = p.A;
                     int r = p.R;
                     int g = p.G;
                     int b = p.B;
 
-                    
+                    //calculate temp value
                     int tr = (int)(0.393 * r + 0.769 * g + 0.189 * b);
                     int tg = (int)(0.349 * r + 0.686 * g + 0.168 * b);
                     int tb = (int)(0.272 * r + 0.534 * g + 0.131 * b);
 
-                    
+                    //set new RGB value
                     if (tr > 255)
                     {
                         r = 255;
@@ -326,6 +330,7 @@ namespace DIP_Processing
                         b = tb;
                     }
 
+                    //set the new RGB value in image pixel
                     bmp.SetPixel(x, y, Color.FromArgb(a, r, g, b));
                 }
             }
@@ -379,6 +384,7 @@ namespace DIP_Processing
                     if (replace)
                         camColor = Color.Transparent;
 
+                    // Set the output pixel
                     output.SetPixel(x, y, camColor);
                 }
             }
@@ -412,6 +418,7 @@ namespace DIP_Processing
             }
 
             pictureBox3.Image = imageWithBackground;
+            subtractImage = imageWithBackground;
         }
 
         private void openCamera_Click(object sender, EventArgs e)
@@ -446,30 +453,178 @@ namespace DIP_Processing
         {
             if (isCameraRunning)
             {
-                isCameraRunning = false; 
+                // Stop the camera
+                isCameraRunning = false; // Set the flag to false to exit the camera loop
 
+                // Wait for the camera thread to finish
                 if (camera != null && camera.IsAlive)
                 {
-                    camera.Join(); 
+                    camera.Join(); // Wait for the thread to finish
                 }
 
+                // Release the video capture object
                 if (capture != null)
                 {
                     capture.Release();
-                    capture.Dispose(); 
-                    capture = null;
+                    capture.Dispose(); // Optionally dispose of the capture object
+                    capture = null; // Set to null to prevent further access
                 }
 
+                // Take a snapshot of the current image
                 if (pictureBox1.Image != null)
                 {
                     Bitmap snapshot = new Bitmap(pictureBox1.Image);
-                    loaded = snapshot; 
+                    loaded = snapshot; // Store the processed snapshot
                     pictureBox1.Image = loaded;
                 }
+                openCamera.Text = "Open Camera";
             }
             else
             {
                 Console.WriteLine("Cannot take picture if the camera isn't capturing image!");
+            }
+        }
+
+        private void saveImageWithBackgroundToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            Bitmap bitmap = (Bitmap)subtractImage.Clone();
+            using (SaveFileDialog saveFileDialog = new SaveFileDialog())
+            {
+                saveFileDialog.Filter = "PNG Image|*.png|JPEG Image|*.jpg|Bitmap Image|*.bmp|GIF Image|*.gif";
+                saveFileDialog.Title = "Save an Image File";
+                saveFileDialog.FileName = "image"; // Default file name
+
+                // Show the dialog and check if the user clicked the Save button
+                if (saveFileDialog.ShowDialog() == DialogResult.OK)
+                {
+                    // Save the bitmap to the selected file
+                    string filePath = saveFileDialog.FileName;
+                    try
+                    {
+                        bitmap.Save(filePath); // Save as default format (PNG)
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Error saving file: " + ex.Message, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
+                }
+            }
+        }
+
+        private void smooth_Click(object sender, EventArgs e)
+        {
+
+            if (processed == null)
+                processed = (Bitmap)loaded.Clone();
+            try
+            {
+                if (BitmapFilter.Smooth(processed, 5))
+                {
+                    pictureBox2.Image = processed;
+
+
+                }
+
+            }
+            catch (Exception ex)
+            {
+
+                MessageBox.Show("Smooth Operation Failed");
+
+            }
+
+
+        }
+        private void gaussianBlur_Click(object sender, EventArgs e)
+        {
+
+            if (processed == null)
+                processed = (Bitmap)loaded.Clone();
+            try
+            {
+                if (BitmapFilter.GaussianBlur(processed, 5))
+                {
+                    pictureBox2.Image = processed;
+                }
+
+            }
+            catch (Exception exception)
+            {
+
+
+                MessageBox.Show("Gaussian Blur Operation Failed");
+
+            }
+
+        }
+
+        private void meanRemoval_Click(object sender, EventArgs e)
+        {
+
+            if (processed == null)
+                processed = (Bitmap)loaded.Clone();
+            try
+            {
+
+                if (BitmapFilter.MeanRemoval(processed, 5))
+                {
+                    pictureBox2.Image = processed;
+                }
+
+            }
+            catch (Exception exception)
+            {
+
+                MessageBox.Show("Mean Removal Operation Failed");
+            }
+
+        }
+
+        private void sharpen_Click(object sender, EventArgs e)
+        {
+            if (processed == null)
+                processed = (Bitmap)loaded.Clone();
+            try
+            {
+                if (BitmapFilter.Sharpen(processed, 5))
+                {
+                    pictureBox2.Image = processed;
+                }
+                else
+                {
+                    MessageBox.Show("Sharpen Operation Failed");
+                }
+
+            }
+            catch (Exception exception)
+            {
+
+
+                MessageBox.Show("Sharpen Operation Failed");
+            }
+
+        }
+
+        private void embossLaplascian_Click(object sender, EventArgs e)
+        {
+            if (processed == null)
+                processed = (Bitmap)loaded.Clone();
+            try
+            {
+                if (BitmapFilter.EmbossLaplacian(processed))
+                {
+                    pictureBox2.Image = processed;
+                }
+                else
+                {
+                    MessageBox.Show("Emboss Laplascian Operation Failed");
+                }
+
+
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show("Emboss Laplascian Operation Failed");
             }
         }
     }
